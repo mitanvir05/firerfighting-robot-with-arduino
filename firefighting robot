@@ -1,0 +1,129 @@
+
+
+// Define constants
+const int trigPin = 12; // Trigger pin of ultrasonic sensor
+const int echoPin = 13; // Echo pin of ultrasonic sensor
+const int ledPin = 7; // LED pin for indicating low water level
+#define Left_S 9      // left sensor
+#define Right_S 10      // right sensor
+#define Forward_S 8 //forward sensor
+#define LM1 2       // left motor
+#define LM2 3       // left motor
+#define RM1 4       // right motor
+#define RM2 5       // right motor
+#define pump 6
+
+// Define variables
+long duration; // Time taken for ultrasonic pulse to bounce back
+int distance; // Distance measured by ultrasonic sensor
+Servo myservo;
+int pos = 0;    
+boolean fire = false;
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(Left_S, INPUT);
+  pinMode(Right_S, INPUT);
+  pinMode(Forward_S, INPUT);
+  pinMode(LM1, OUTPUT);
+  pinMode(LM2, OUTPUT);
+  pinMode(RM1, OUTPUT);
+  pinMode(RM2, OUTPUT);
+  pinMode(pump, OUTPUT);
+  myservo.attach(11);
+  myservo.write(90); 
+  Serial.begin(9600); // Initialize serial communication for debugging
+  
+}
+
+void loop() {
+  // Send 10us pulse to trigger pin
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, LOW);
+
+  // Measure time taken for pulse to bounce back
+  duration = pulseIn(echoPin, HIGH);
+
+  // Calculate distance in cm
+  distance = duration * 0.034 / 2;
+
+
+
+  // Check if water level is low
+  if (distance > 4) { // Replace 10 with the appropriate distance threshold for your setup
+    digitalWrite(ledPin, HIGH); // Blink LED to indicate low water level
+    delay(100);
+    digitalWrite(ledPin, LOW);
+    Serial.println("Water Level: Low");
+    
+  } else {
+    digitalWrite(ledPin, LOW);
+    Serial.println("Water Level: High");
+  }
+
+  // Check if fire is detected
+  if (digitalRead(Left_S) == 1 && digitalRead(Right_S) == 1 && digitalRead(Forward_S) == 1) {
+    // Do not move the robot
+    digitalWrite(LM1, HIGH);
+    digitalWrite(LM2, HIGH);
+    digitalWrite(RM1, HIGH);
+    digitalWrite(RM2, HIGH);
+    Serial.println("Fire Detected: No");
+  } else if (digitalRead(Forward_S) == 0) {
+    // Move the robot forward
+    digitalWrite(LM1, HIGH);
+    digitalWrite(LM2, LOW);
+    digitalWrite(RM1, HIGH);
+    digitalWrite(RM2, LOW);
+    fire = true;
+    Serial.println("Fire Detected: Yes");
+  } else if (digitalRead(Left_S) == 0) {
+    // Move the robot left
+    digitalWrite(LM1, HIGH);
+    digitalWrite(LM2, LOW);
+    digitalWrite(RM1, HIGH);
+    digitalWrite(RM2, HIGH);
+     Serial.println("Fire Detected: Left Side");
+  } else if (digitalRead(Right_S) == 0) {
+    // Move the robot right
+    digitalWrite(LM1, HIGH);
+    digitalWrite(LM2, HIGH);
+    digitalWrite(RM1, HIGH);
+    digitalWrite(RM2, LOW);
+    Serial.println("Fire Detected: Right Side");
+  }
+  
+  delay(300); // Slow down
+  while (fire == true) {
+    // Put off fire
+    delay(500);
+    digitalWrite(LM1, HIGH);
+    digitalWrite(LM2, HIGH);
+    digitalWrite(RM1, HIGH);
+    digitalWrite(RM2, HIGH);
+    digitalWrite(pump, HIGH); 
+    delay(2500);
+    Serial.println("Water Pump Activate");
+
+    for (pos = 50; pos <= 130; pos += 1) { 
+      myservo.write(pos); 
+      delay(15);  
+      
+    }
+  Serial.println("Servo Motor Activate");
+    for (pos = 130; pos >= 50; pos -= 1) { 
+      myservo.write(pos); 
+      delay(15);
+    }
+
+    digitalWrite(pump,LOW);
+    myservo.write(90);
+    fire = false;
+    Serial.println("Successfully Fire Extinguish");
+  }
+}
